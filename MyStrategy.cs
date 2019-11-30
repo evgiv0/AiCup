@@ -25,7 +25,7 @@ public class MyStrategy
             }
         }
 
-
+        var homePosition = unit.Position;
         LootBox? nearestWeapon = null;
         LootBox? nearestNotBazuka = null;
         LootBox? bestWeapon = null;
@@ -99,6 +99,36 @@ public class MyStrategy
 
         }
 
+        Bullet? nearestBullet = null;
+        foreach (var bullet in game.Bullets.Where(x => x.PlayerId == unit.PlayerId))
+        {
+
+            if (!nearestBullet.HasValue || DistanceSqr(unit.Position, bullet.Position) < DistanceSqr(unit.Position, bullet.Position))
+            {
+                nearestBullet = bullet;
+            }
+        }
+
+
+        if (nearestBullet.HasValue)
+        {
+            if (unit.Position.X > nearestBullet.Value.Position.X
+                && unit.Weapon.HasValue
+                && unit.Weapon.Value.Parameters.Explosion.HasValue
+                && unit.Position.X - unit.Weapon.Value.Parameters.Explosion.Value.Radius < nearestBullet.Value.Position.X)
+            {
+                targetPos = homePosition;
+            }
+            else if (unit.Position.X < nearestBullet.Value.Position.X
+                && unit.Weapon.HasValue
+                && unit.Weapon.Value.Parameters.Explosion.HasValue
+                && unit.Position.X + unit.Weapon.Value.Parameters.Explosion.Value.Radius > nearestBullet.Value.Position.X)
+            {
+                targetPos = homePosition;
+            }
+
+        }
+
         bool jump = targetPos.Y > unit.Position.Y;
         if (targetPos.X > unit.Position.X && game.Level.Tiles[(int)(unit.Position.X + 1)][(int)(unit.Position.Y)] == Tile.Wall)
         {
@@ -128,8 +158,11 @@ public class MyStrategy
 
         }
 
+
         double velocity = targetPos.X - unit.Position.X;
-        if (unit.Position.X > targetPos.X && velocity > -game.Properties.UnitMaxHorizontalSpeed)
+        if (nearestBullet.HasValue)
+            velocity = targetPos.X - unit.Position.X;
+        else if (unit.Position.X > targetPos.X && velocity > -game.Properties.UnitMaxHorizontalSpeed)
             velocity = -game.Properties.UnitMaxHorizontalSpeed;
         else if (unit.Position.X > nearestEnemy?.Position.X && isBazukaBlya &&
                  unit.Position.X - unit.Weapon.Value.Parameters.Explosion.Value.Radius * 2 < nearestEnemy?.Position.X)
@@ -145,6 +178,9 @@ public class MyStrategy
             jump = true;
             velocity = -game.Properties.UnitMaxHorizontalSpeed;
         }
+
+
+
 
 
         //if (unit.Position.X > targetPos.X && unit.Position.X - )
@@ -172,14 +208,24 @@ public class MyStrategy
     {
         var line = new ParametricLine(new PointF((float)unit.Position.X, (float)unit.Position.Y), new PointF((float)enemy.Position.X, (float)enemy.Position.Y));
         debug.Draw(new CustomData.Line(new Vec2Float((float)unit.Position.X, (float)unit.Position.Y), new Vec2Float((float)aim.X, (float)aim.Y), 0.1f, new ColorFloat(255, 0, 0, 1)));
-        var fraction = Math.Abs((int)unit.Position.X) + Math.Abs((int)aim.X);
+        var fraction = Math.Abs((int)unit.Position.X) + Math.Abs((int)enemy.Position.X);
         var points = Enumerable.Range(0, fraction)
             .Select(p => line.Fraction((float)p / fraction));
+
+        if (unit.Position.Y > enemy.Position.Y)
+        {
+            for (int i = 0; i < unit.Weapon.Value.Parameters.Explosion.Value.Radius; i++)
+            {
+                if (game.Level.Tiles[(int)unit.Position.X][(int)unit.Position.Y - i] == Tile.Wall)
+                    return false;
+            }
+        }
 
         if (Math.Abs(unit.Position.X - enemy.Position.X) < unit.Weapon.Value.Parameters.Explosion.Value.Radius * 2
             && unit.Health > unit.Weapon.Value.Parameters.Explosion.Value.Damage + unit.Weapon.Value.Parameters.FireRate)
             return true;
 
+        
         if (unit.Position.X > enemy.Position.X)
         {
             foreach (var pointF in points.Where(x => x.X > unit.Position.X - unit.Weapon.Value.Parameters.Explosion.Value.Radius * 2))
@@ -216,23 +262,11 @@ public class MyStrategy
             return currentInfo.NearestWeapon.Value.Position;
         }
 
-        if (currentInfo.Me.Health <= currentInfo.Game.Properties.UnitMaxHealth * 0.75 && currentInfo.NearestHealth.HasValue)
+        if (currentInfo.Me.Health <= currentInfo.Game.Properties.UnitMaxHealth * 0.9 && currentInfo.NearestHealth.HasValue)
         {
             return currentInfo.NearestHealth.Value.Position;
         }
-        if (currentInfo.Enemy.HasValue
-            && currentInfo.Me.Weapon.HasValue
-            && currentInfo.Me.Weapon.Value.Typ == WeaponType.RocketLauncher
-            && currentInfo.NearestNotBazuka.HasValue)
-        {
-            if (Math.Abs(currentInfo.Me.Position.X - currentInfo.Enemy.Value.Position.X) < currentInfo.Me.Weapon.Value.Parameters.Explosion.Value.Radius + 1
-                || Math.Abs(currentInfo.Me.Position.Y - currentInfo.Enemy.Value.Position.Y) < currentInfo.Me.Weapon.Value.Parameters.Explosion.Value.Radius + 1
-                && Math.Abs(currentInfo.Me.Position.X - currentInfo.Enemy.Value.Position.X) < 1)
-            {
-                return currentInfo.NearestNotBazuka.Value.Position;
-            }
 
-        }
         if (currentInfo.BestWeapon.HasValue && currentInfo.Me.Weapon.HasValue && currentInfo.Me.Weapon.Value.Typ != WeaponType.RocketLauncher)
         {
             return currentInfo.BestWeapon.Value.Position;
