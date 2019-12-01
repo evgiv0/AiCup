@@ -13,5 +13,6 @@ namespace AiCup2019.OwnModels
         public LootBox? NearestMine { get; set; }
         public LootBox? BestWeapon { get; set; }
         public Game Game { get; set; }
+        public Vec2Double HomePosition { get; internal set; }
     }
 }
