@@ -128,7 +128,7 @@ public class MyStrategy
             jump = false;
         }
 
-        else if ((int)unit.Position.Y == (int)nearestEnemy.Value.Position.Y)
+        else if ((int)unit.Position.Y == (int)nearestEnemy.Value.Position.Y && Math.Abs((int)unit.Position.X - (int)nearestEnemy.Value.Position.X) < 2)
         {
             jump = true;
         }
