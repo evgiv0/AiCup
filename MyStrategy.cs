@@ -132,8 +132,8 @@ public class MyStrategy
         {
             jump = true;
         }
-        else if (target.Purpose == Purpose.Heal)
-            jump = true;
+        //else if (target.Purpose == Purpose.Heal)
+        //    jump = true;
 
         bool shoot = true;
 
@@ -172,7 +172,6 @@ public class MyStrategy
 
             {
                 velocity = -game.Properties.UnitMaxHorizontalSpeed / 2;
-                jump = true;
             }
 
             else
@@ -185,7 +184,8 @@ public class MyStrategy
             Jump = jump,
             JumpDown = !jump,
             Aim = aim,
-            Shoot = shoot,
+            Shoot = false,
+            Reload = false,
             SwapWeapon = target.SwapWeapon,
             PlantMine = false
         };
@@ -250,9 +250,6 @@ public class MyStrategy
         //    && (int)nearestHealth.Value.Position.X != (int)enemy.Position.X)
         //    return true;
 
-
-        
-
         return true;
 
     }
@@ -286,7 +283,6 @@ public class MyStrategy
             && (currentInfo.Me.Position.X + currentInfo.Me.Weapon.Value.Parameters.Explosion.Value.Radius * 2 > currentInfo.Enemy.Value.Position.X
                 || currentInfo.Me.Position.X - currentInfo.Me.Weapon.Value.Parameters.Explosion.Value.Radius * 2 < currentInfo.Enemy.Value.Position.X)
             && currentInfo.NearestNotBazuka.HasValue
-            //&& currentInfo.NearestWeapon.Value.Item
             )
         {
             return new Target
