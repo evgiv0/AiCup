@@ -184,7 +184,7 @@ public class MyStrategy
             Jump = jump,
             JumpDown = !jump,
             Aim = aim,
-            Shoot = false,
+            Shoot = shoot,
             Reload = false,
             SwapWeapon = target.SwapWeapon,
             PlantMine = false
