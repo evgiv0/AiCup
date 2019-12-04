@@ -5,5 +5,6 @@
     Home = 2,
     BestWeapon = 3,
     NearestWeapon = 4,
-    NearestNotBazuka = 5
+    NearestNotBazuka = 5,
+    NeoMode = 6
 }

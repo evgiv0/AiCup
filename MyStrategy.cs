@@ -12,6 +12,8 @@ public class MyStrategy
     {
         return (a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y);
     }
+
+    public bool? InJump { get; set; }
     public UnitAction GetAction(Unit unit, Game game, Debug debug)
     {
         Unit? nearestEnemy = null;
@@ -84,6 +86,7 @@ public class MyStrategy
                 }
         }
 
+
         var target = GetTarget(new CurrentInfo
         {
             Me = unit,
@@ -93,6 +96,9 @@ public class MyStrategy
             NearestWeapon = nearestWeapon,
             NearestNotBazuka = nearestNotBazuka,
             HomePosition = homePosition,
+            Bullets = game.Bullets.Where(b => b.PlayerId != unit.PlayerId
+            && Math.Abs(unit.Position.X - b.Position.X) < 5
+            && Math.Abs(unit.Position.Y - b.Position.Y) < 5).ToList(),
             BestWeapon = bestWeapon,
             Game = game
         });
@@ -110,13 +116,16 @@ public class MyStrategy
 
         }
 
+        if (target.Purpose == Purpose.NeoMode)
+            InJump = target.NeedJump;
+        else
+            InJump = null;
+
         bool jump = targetPos.Y > unit.Position.Y;
         if (targetPos.X > unit.Position.X && game.Level.Tiles[(int)(unit.Position.X + 1)][(int)(unit.Position.Y)] == Tile.Wall)
         {
             jump = true;
         }
-
-
         else if (targetPos.X < unit.Position.X && game.Level.Tiles[(int)(unit.Position.X - 1)][(int)(unit.Position.Y)] == Tile.Wall)
         {
             jump = true;
@@ -135,6 +144,8 @@ public class MyStrategy
         //else if (target.Purpose == Purpose.Heal)
         //    jump = true;
 
+        if (InJump.HasValue)
+            jump = InJump.Value;
         bool shoot = true;
 
         //shoot = IsAnyWalls(unit.Position, aim);
@@ -153,10 +164,10 @@ public class MyStrategy
         {
             if (target.Purpose == Purpose.Enemy
                 && isBazukaBlya
-                && unit.Position.X - unit.Weapon.Value.Parameters.Explosion.Value.Radius * 2 < nearestEnemy.Value.Position.X
-                && Math.Abs(unit.Position.Y - nearestEnemy.Value.Position.Y) < unit.Weapon.Value.Parameters.Explosion.Value.Radius * 2)
+                && unit.Position.X - unit.Weapon.Value.Parameters.Explosion.Value.Radius * 3 < nearestEnemy.Value.Position.X
+                && Math.Abs(unit.Position.Y - nearestEnemy.Value.Position.Y) < unit.Weapon.Value.Parameters.Explosion.Value.Radius * 3)
             {
-                velocity = game.Properties.UnitMaxHorizontalSpeed / 2;
+                velocity = game.Properties.UnitMaxHorizontalSpeed;
             }
 
             else
@@ -167,11 +178,11 @@ public class MyStrategy
         {
             if (target.Purpose == Purpose.Enemy
                 && isBazukaBlya
-                && unit.Position.X + unit.Weapon.Value.Parameters.Explosion.Value.Radius * 2 > nearestEnemy.Value.Position.X
-                && Math.Abs(unit.Position.Y - nearestEnemy.Value.Position.Y) < unit.Weapon.Value.Parameters.Explosion.Value.Radius * 2)
+                && unit.Position.X + unit.Weapon.Value.Parameters.Explosion.Value.Radius * 3 > nearestEnemy.Value.Position.X
+                && Math.Abs(unit.Position.Y - nearestEnemy.Value.Position.Y) < unit.Weapon.Value.Parameters.Explosion.Value.Radius * 3)
 
             {
-                velocity = -game.Properties.UnitMaxHorizontalSpeed / 2;
+                velocity = -game.Properties.UnitMaxHorizontalSpeed;
             }
 
             else
@@ -208,6 +219,13 @@ public class MyStrategy
             && (int)unitPosition.Y > (int)nearestEnemy.Value.Position.Y)
             return false;
 
+        //if(unitPosition.X > nearestEnemy.Value.Position.X
+        //    && targetPosition.X < unitPosition.X
+        //    && targetPosition.X < nearestEnemy.Value.Position.X 
+        //    && 
+        //    ) 
+        //if(targetPosition.)
+
 
         return true;
     }
@@ -242,7 +260,7 @@ public class MyStrategy
             }
         }
 
-        
+
         //if (Math.Abs(unit.Position.X - enemy.Position.X) < unit.Weapon.Value.Parameters.Explosion.Value.Radius * 2
         //    && Math.Abs(unit.Position.Y - enemy.Position.Y) < unit.Weapon.Value.Parameters.Explosion.Value.Radius * 2
         //    && unit.Health > unit.Weapon.Value.Parameters.Explosion.Value.Damage + unit.Weapon.Value.Parameters.FireRate
@@ -256,6 +274,18 @@ public class MyStrategy
 
     private Target GetTarget(CurrentInfo currentInfo)
     {
+        Bullet? nearestBullet = null;
+        if (currentInfo.Bullets.Any())
+        {
+            var minDistanse = currentInfo.Bullets.Min(x => DistanceSqr(x.Position, currentInfo.Me.Position));
+            nearestBullet = currentInfo.Bullets.FirstOrDefault(x => DistanceSqr(x.Position, currentInfo.Me.Position) == minDistanse);
+        }
+            
+        if (nearestBullet != null)
+        {
+            return NeoModeTarget(nearestBullet.Value, currentInfo);
+        }
+
         if (!currentInfo.Me.Weapon.HasValue && currentInfo.NearestWeapon.HasValue)
         {
             return new Target
@@ -318,6 +348,86 @@ public class MyStrategy
         {
             Position = currentInfo.HomePosition,
             Purpose = Purpose.Home
+        };
+    }
+
+    private Target NeoModeTarget(Bullet bullet, CurrentInfo currentInfo)
+    {
+        if (currentInfo.Me.Position.X > bullet.Position.X)
+        {
+            if ((int)bullet.Position.Y == (int)currentInfo.Me.Position.Y
+                            && bullet.Position.X != currentInfo.Me.Position.X)
+            {
+                return new Target
+                {
+                    Position = new Vec2Double(currentInfo.Me.Position.X - 5, currentInfo.Me.Position.Y + 10),
+                    Purpose = Purpose.NeoMode,
+                    NeedJump = true
+                };
+            }
+
+            if ((int)bullet.Position.Y < (int)currentInfo.Me.Position.Y
+                            && bullet.Position.X != currentInfo.Me.Position.X)
+            {
+                return new Target
+                {
+                    Position = new Vec2Double(currentInfo.Me.Position.X + 5, currentInfo.Me.Position.Y),
+                    Purpose = Purpose.NeoMode,
+                    NeedJump = false
+                };
+            }
+
+            if ((int)bullet.Position.Y > (int)currentInfo.Me.Position.Y
+                            && bullet.Position.X != currentInfo.Me.Position.X)
+            {
+                return new Target
+                {
+                    Position = new Vec2Double(currentInfo.Me.Position.X + 5, currentInfo.Me.Position.Y),
+                    Purpose = Purpose.NeoMode,
+                    NeedJump = false
+                };
+            }
+
+        }
+        else
+        {
+            if ((int)bullet.Position.Y == (int)currentInfo.Me.Position.Y
+                            && bullet.Position.X != currentInfo.Me.Position.X)
+            {
+                return new Target
+                {
+                    Position = new Vec2Double(currentInfo.Me.Position.X + 5, currentInfo.Me.Position.Y + 10),
+                    Purpose = Purpose.NeoMode,
+                    NeedJump = true
+                };
+            }
+
+            if ((int)bullet.Position.Y < (int)currentInfo.Me.Position.Y
+                            && bullet.Position.X != currentInfo.Me.Position.X)
+            {
+                return new Target
+                {
+                    Position = new Vec2Double(currentInfo.Me.Position.X - 5, currentInfo.Me.Position.Y),
+                    Purpose = Purpose.NeoMode,
+                    NeedJump = false
+                };
+            }
+
+            if ((int)bullet.Position.Y > (int)currentInfo.Me.Position.Y
+                            && bullet.Position.X != currentInfo.Me.Position.X)
+            {
+                return new Target
+                {
+                    Position = new Vec2Double(currentInfo.Me.Position.X - 5, currentInfo.Me.Position.Y),
+                    Purpose = Purpose.NeoMode,
+                    NeedJump = false
+                };
+            }
+        }
+
+        return new Target
+        {
+            Position = currentInfo.Me.Position
         };
     }
 }

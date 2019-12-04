@@ -14,5 +14,6 @@ namespace AiCup2019.OwnModels
         public LootBox? BestWeapon { get; set; }
         public Game Game { get; set; }
         public Vec2Double HomePosition { get; internal set; }
+        public List<Bullet> Bullets { get; internal set; }
     }
 }
