@@ -195,7 +195,7 @@ public class MyStrategy
             Jump = jump,
             JumpDown = !jump,
             Aim = aim,
-            Shoot = shoot,
+            Shoot = false,
             Reload = false,
             SwapWeapon = target.SwapWeapon,
             PlantMine = false
@@ -355,12 +355,13 @@ public class MyStrategy
     {
         if (currentInfo.Me.Position.X > bullet.Position.X)
         {
-            if ((int)bullet.Position.Y == (int)currentInfo.Me.Position.Y
-                            && bullet.Position.X != currentInfo.Me.Position.X)
+            if (bullet.Position.Y + bullet.Size > currentInfo.Me.Position.Y - 1
+                && bullet.Position.Y < currentInfo.Me.Position.Y + currentInfo.Me.Size.Y
+                && bullet.Position.X != currentInfo.Me.Position.X)
             {
                 return new Target
                 {
-                    Position = new Vec2Double(currentInfo.Me.Position.X - 5, currentInfo.Me.Position.Y + 10),
+                    Position = new Vec2Double(currentInfo.Me.Position.X + 5, currentInfo.Me.Position.Y + 10),
                     Purpose = Purpose.NeoMode,
                     NeedJump = true
                 };
@@ -391,12 +392,12 @@ public class MyStrategy
         }
         else
         {
-            if ((int)bullet.Position.Y == (int)currentInfo.Me.Position.Y
+            if (bullet.Position.Y + bullet.Size > currentInfo.Me.Position.Y + currentInfo.Me.Size.Y - 1
                             && bullet.Position.X != currentInfo.Me.Position.X)
             {
                 return new Target
                 {
-                    Position = new Vec2Double(currentInfo.Me.Position.X + 5, currentInfo.Me.Position.Y + 10),
+                    Position = new Vec2Double(currentInfo.Me.Position.X - 5, currentInfo.Me.Position.Y + 10),
                     Purpose = Purpose.NeoMode,
                     NeedJump = true
                 };
