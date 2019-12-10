@@ -1,4 +1,5 @@
-﻿using System.Reflection.Metadata;
+﻿using System;
+using System.Reflection.Metadata;
 using AiCup2019.Model;
 using AiCup2019.OwnModels;
 
@@ -41,7 +42,7 @@ namespace aicup2019
 
                 var cross = dxc * dyl - dyc * dxl;
 
-                if (cross == 0)
+                if (Math.Abs(cross) < 0.1)
                     return true;
             }
 

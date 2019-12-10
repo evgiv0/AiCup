@@ -97,7 +97,7 @@ public class MyStrategy
             var currentBullet = game.Bullets.First(x => x.PlayerId == nearestEnemy.Value.PlayerId);
 
 
-            if (EnemyBullets.Count == 0 || EnemyBullets.Any(x => !x.СontainsPoint(currentBullet.Position)))
+            if (EnemyBullets.Count == 0 || EnemyBullets.All(x => !x.СontainsPoint(currentBullet.Position)))
             {
                 if (getNotFilledBullet == null)
                 {
