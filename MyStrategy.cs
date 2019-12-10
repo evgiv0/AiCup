@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using aicup2019;
 
 public class MyStrategy
 {
@@ -15,6 +16,7 @@ public class MyStrategy
 
     public bool? InJump { get; set; }
     public bool GetPlatfrom { get; set; }
+    public List<BulletInfo> EnemyBullets = new List<BulletInfo>();
 
     public Vec2Double? CurrentTarget;
     public UnitAction GetAction(Unit unit, Game game, Debug debug)
@@ -89,6 +91,25 @@ public class MyStrategy
                 }
         }
 
+        if (nearestEnemy.HasValue && game.Bullets.Any(x => x.PlayerId == nearestEnemy.Value.PlayerId))
+        {
+            var getNotFilledBullet = EnemyBullets.FirstOrDefault(x => !x.SecondPoint.HasValue);
+            var currentBullet = game.Bullets.First(x => x.PlayerId == nearestEnemy.Value.PlayerId);
+
+
+            if (EnemyBullets.Count == 0 || EnemyBullets.Any(x => !x.СontainsPoint(currentBullet.Position)))
+            {
+                if (getNotFilledBullet == null)
+                {
+                    EnemyBullets.Add(new BulletInfo
+                    {
+                        FirstPoint = currentBullet.Position
+                    });
+                }
+                else if (!getNotFilledBullet.SecondPoint.HasValue)
+                    getNotFilledBullet.SecondPoint = currentBullet.Position;
+            }
+        }
 
         var target = GetTarget(new CurrentInfo
         {
@@ -99,12 +120,9 @@ public class MyStrategy
             NearestWeapon = nearestWeapon,
             NearestNotBazuka = nearestNotBazuka,
             HomePosition = homePosition,
-            Bullets = game.Bullets.Where(b => b.PlayerId != unit.PlayerId
-            && Math.Abs(unit.Position.X - b.Position.X) < 5
-            && Math.Abs(unit.Position.Y - b.Position.Y) < 5).ToList(),
             BestWeapon = bestWeapon,
             Game = game
-        });
+        }, debug);
 
         debug.Draw(new CustomData.Log("Target pos: " + target.Position));
 
@@ -283,18 +301,29 @@ public class MyStrategy
 
     }
 
-    private Target GetTarget(CurrentInfo currentInfo)
+    private Target GetTarget(CurrentInfo currentInfo, Debug debug)
     {
-        Bullet? nearestBullet = null;
-        if (currentInfo.Bullets.Any())
-        {
-            var minDistanse = currentInfo.Bullets.Min(x => DistanceSqr(x.Position, currentInfo.Me.Position));
-            nearestBullet = currentInfo.Bullets.FirstOrDefault(x => DistanceSqr(x.Position, currentInfo.Me.Position) == minDistanse);
-        }
+        //Bullet? nearestBullet = null;
+        //if (currentInfo.Bullets.Any())
+        //{
+        //    var minDistanse = currentInfo.Bullets.Min(x => DistanceSqr(x.Position, currentInfo.Me.Position));
+        //    nearestBullet = currentInfo.Bullets.FirstOrDefault(x => DistanceSqr(x.Position, currentInfo.Me.Position) == minDistanse);
+        //}
 
-        if (nearestBullet != null)
+        //if (nearestBullet != null)
+        //{
+        //    return NeoModeTarget(nearestBullet.Value, currentInfo);
+        //}
+
+        if (EnemyBullets.Any(x => x.Line != null))
         {
-            return NeoModeTarget(nearestBullet.Value, currentInfo);
+            var t = EnemyBullets.First(x => x.Line != null);
+            var points = t.Line.GetLinePoints(20);
+
+            foreach (var pointF in points)
+            {
+                debug.Draw(new CustomData.Rect(new Vec2Float(pointF.X, pointF.Y), new Vec2Float(0.2f, 0.2f), new ColorFloat(123, 200, 1, 1)));
+            }
         }
 
         if (!currentInfo.Me.Weapon.HasValue && currentInfo.NearestWeapon.HasValue)
