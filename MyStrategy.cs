@@ -303,17 +303,6 @@ public class MyStrategy
 
     private Target GetTarget(CurrentInfo currentInfo, Debug debug)
     {
-        //Bullet? nearestBullet = null;
-        //if (currentInfo.Bullets.Any())
-        //{
-        //    var minDistanse = currentInfo.Bullets.Min(x => DistanceSqr(x.Position, currentInfo.Me.Position));
-        //    nearestBullet = currentInfo.Bullets.FirstOrDefault(x => DistanceSqr(x.Position, currentInfo.Me.Position) == minDistanse);
-        //}
-
-        //if (nearestBullet != null)
-        //{
-        //    return NeoModeTarget(nearestBullet.Value, currentInfo);
-        //}
 
         if (EnemyBullets.Any(x => x.Line != null))
         {
