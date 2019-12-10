@@ -14,8 +14,10 @@ public class MyStrategy
     }
 
     public bool? InJump { get; set; }
+    public int CurrentTick { get; set; }
     public UnitAction GetAction(Unit unit, Game game, Debug debug)
     {
+        CurrentTick++;
         Unit? nearestEnemy = null;
         foreach (var other in game.Units)
         {
@@ -50,7 +52,7 @@ public class MyStrategy
                             var anotherWeapon = item;
                             var myWeapon = unit.Weapon;
 
-                            if (myWeapon.HasValue && myWeapon.Value.Typ < anotherWeapon.WeaponType)
+                            if (myWeapon.HasValue && myWeapon.Value.Typ != 0 && anotherWeapon.WeaponType == 0)
                             {
                                 bestWeapon = lootBox;
                             }
@@ -105,6 +107,7 @@ public class MyStrategy
 
         var targetPos = target.Position;
 
+
         debug.Draw(new CustomData.Log("Target pos: " + target.Position));
 
         Vec2Double aim = new Vec2Double(0, 0);
@@ -112,7 +115,7 @@ public class MyStrategy
         {
             //if(!nearestEnemy.Value.OnGround && nearestEnemy.Value.)
             aim = new Vec2Double(nearestEnemy.Value.Position.X - unit.Position.X, nearestEnemy.Value.Position.Y - unit.Position.Y);
-            
+
         }
 
         if (target.Purpose == Purpose.NeoMode)
@@ -147,46 +150,14 @@ public class MyStrategy
             jump = InJump.Value;
         bool shoot = true;
 
-        //shoot = IsAnyWalls(unit.Position, aim);
-        var isBazukaBlya = unit.Weapon.HasValue && unit.Weapon.Value.Typ == WeaponType.RocketLauncher &&
-                           unit.Weapon.Value.Parameters.Explosion.HasValue;
-        if (isBazukaBlya)
-        {
-            shoot = CanIShoot(unit, aim, game, debug, nearestEnemy.Value, nearestHealth);
-
-        }
-
+        shoot = CanIShoot(unit, aim, game, debug, nearestEnemy.Value, nearestHealth);
 
         double velocity = targetPos.X - unit.Position.X;
-
         if (unit.Position.X > targetPos.X)
-        {
-            if (target.Purpose == Purpose.Enemy
-                && isBazukaBlya
-                && unit.Position.X - unit.Weapon.Value.Parameters.Explosion.Value.Radius + 2 < nearestEnemy.Value.Position.X
-                && Math.Abs(unit.Position.Y - nearestEnemy.Value.Position.Y) < unit.Weapon.Value.Parameters.Explosion.Value.Radius + 2)
-            {
-                velocity = game.Properties.UnitMaxHorizontalSpeed;
-            }
+            velocity = (int)-game.Properties.UnitMaxHorizontalSpeed;
+        else
+            velocity = (int)game.Properties.UnitMaxHorizontalSpeed;
 
-            else
-                velocity = -game.Properties.UnitMaxHorizontalSpeed;
-
-        }
-        else if (unit.Position.X < targetPos.X)
-        {
-            if (target.Purpose == Purpose.Enemy
-                && isBazukaBlya
-                && unit.Position.X + unit.Weapon.Value.Parameters.Explosion.Value.Radius + 2 > nearestEnemy.Value.Position.X
-                && Math.Abs(unit.Position.Y - nearestEnemy.Value.Position.Y) < unit.Weapon.Value.Parameters.Explosion.Value.Radius + 2)
-
-            {
-                velocity = -game.Properties.UnitMaxHorizontalSpeed;
-            }
-
-            else
-                velocity = game.Properties.UnitMaxHorizontalSpeed;
-        }
 
         UnitAction action = new UnitAction
         {
@@ -231,48 +202,90 @@ public class MyStrategy
 
     private bool CanIShoot(Unit unit, Vec2Double aim, Game game, Debug debug, Unit enemy, LootBox? nearestHealth)
     {
-        
-        if (unit.Position.X > enemy.Position.X)
+        if (unit.Weapon.HasValue)
         {
-            var line = new ParametricLine(new PointF((float)unit.Position.X + (float)unit.Size.X, (float)unit.Position.Y), new PointF((float)enemy.Position.X, (float)enemy.Position.Y));
-            debug.Draw(new CustomData.Line(new Vec2Float((float)unit.Position.X, (float)unit.Position.Y), new Vec2Float((float)enemy.Position.X, (float)enemy.Position.Y), 0.1f, new ColorFloat(255, 0, 0, 1)));
-            var fraction = Math.Abs((int)unit.Position.X) + Math.Abs((int)enemy.Position.X);
-            var points = Enumerable.Range(0, fraction)
-                .Select(p => line.Fraction((float)p / fraction));
-            foreach (var pointF in points.Where(x => x.X > unit.Position.X - unit.Weapon.Value.Parameters.Explosion.Value.Radius * 2))
+            switch (unit.Weapon.Value.Typ)
             {
-                debug.Draw(new CustomData.Rect(new Vec2Float(pointF.X, pointF.Y), new Vec2Float((float)unit.Weapon.Value.Parameters.Bullet.Size, (float)unit.Weapon.Value.Parameters.Bullet.Size), new ColorFloat(123, 200, 1, 1)));
-                if (game.Level.Tiles[(int)pointF.X][(int)pointF.Y] == Tile.Wall
-                    || game.Level.Tiles[(int)pointF.X][(int)pointF.Y] == Tile.JumpPad)
-                    return false;
+                case WeaponType.RocketLauncher:
+                    {
+                        if (unit.Position.X > enemy.Position.X)
+                        {
+                            var line = new ParametricLine(new PointF((float)unit.Position.X + (float)unit.Size.X, (float)unit.Position.Y), new PointF((float)enemy.Position.X, (float)enemy.Position.Y));
+                            debug.Draw(new CustomData.Line(new Vec2Float((float)unit.Position.X, (float)unit.Position.Y), new Vec2Float((float)enemy.Position.X, (float)enemy.Position.Y), 0.1f, new ColorFloat(255, 0, 0, 1)));
+                            var fraction = Math.Abs((int)unit.Position.X) + Math.Abs((int)enemy.Position.X);
+                            var points = Enumerable.Range(0, fraction)
+                                .Select(p => line.Fraction((float)p / fraction));
+                            foreach (var pointF in points.Where(x => x.X > unit.Position.X - unit.Weapon.Value.Parameters.Explosion.Value.Radius * 2))
+                            {
+                                debug.Draw(new CustomData.Rect(new Vec2Float(pointF.X, pointF.Y), new Vec2Float((float)unit.Weapon.Value.Parameters.Bullet.Size, (float)unit.Weapon.Value.Parameters.Bullet.Size), new ColorFloat(123, 200, 1, 1)));
+                                if (game.Level.Tiles[(int)pointF.X][(int)pointF.Y] == Tile.Wall
+                                    || game.Level.Tiles[(int)pointF.X][(int)pointF.Y] == Tile.JumpPad)
+                                    return false;
+                            }
+                        }
+                        else if (unit.Position.X < enemy.Position.X)
+                        {
+                            var line = new ParametricLine(new PointF((float)unit.Position.X - (float)unit.Size.X, (float)unit.Position.Y), new PointF((float)enemy.Position.X, (float)enemy.Position.Y));
+                            debug.Draw(new CustomData.Line(new Vec2Float((float)unit.Position.X, (float)unit.Position.Y), new Vec2Float((float)enemy.Position.X, (float)enemy.Position.Y), 0.1f, new ColorFloat(255, 0, 0, 1)));
+                            var fraction = Math.Abs((int)unit.Position.X) + Math.Abs((int)enemy.Position.X);
+                            var points = Enumerable.Range(0, fraction)
+                                .Select(p => line.Fraction((float)p / fraction));
+                            foreach (var pointF in points.Where(x => x.X < unit.Position.X + unit.Weapon.Value.Parameters.Explosion.Value.Radius * 2))
+                            {
+                                debug.Draw(new CustomData.Rect(new Vec2Float(pointF.X, pointF.Y), new Vec2Float((float)unit.Weapon.Value.Parameters.Bullet.Size, (float)unit.Weapon.Value.Parameters.Bullet.Size), new ColorFloat(123, 200, 1, 1)));
+                                if (game.Level.Tiles[(int)pointF.X][(int)pointF.Y] == Tile.Wall
+                                    || game.Level.Tiles[(int)pointF.X][(int)pointF.Y] == Tile.JumpPad)
+                                    return false;
+                            }
+                        }
+                        break;
+                    }
+                case WeaponType.Pistol:
+                case WeaponType.AssaultRifle:
+                    {
+                        if (unit.Position.X > enemy.Position.X)
+                        {
+                            var line = new ParametricLine(new PointF((float)unit.Position.X + (float)unit.Size.X, (float)unit.Position.Y), new PointF((float)enemy.Position.X, (float)enemy.Position.Y));
+                            debug.Draw(new CustomData.Line(new Vec2Float((float)unit.Position.X, (float)unit.Position.Y), new Vec2Float((float)enemy.Position.X, (float)enemy.Position.Y), 0.1f, new ColorFloat(255, 0, 0, 1)));
+                            var fraction = Math.Abs((int)unit.Position.X) + Math.Abs((int)enemy.Position.X);
+                            var points = Enumerable.Range(0, fraction)
+                                .Select(p => line.Fraction((float)p / fraction));
+                            foreach (var pointF in points.Where(x => x.X < game.Level.Tiles.Length))
+                            {
+                                debug.Draw(new CustomData.Rect(new Vec2Float(pointF.X, pointF.Y), new Vec2Float((float)unit.Weapon.Value.Parameters.Bullet.Size, (float)unit.Weapon.Value.Parameters.Bullet.Size), new ColorFloat(123, 200, 1, 1)));
+                                if (game.Level.Tiles[(int)(pointF.X - unit.Size.X / 2)][(int)pointF.Y] == Tile.Wall)
+                                    return false;
+                            }
+                        }
+                        else if (unit.Position.X < enemy.Position.X)
+                        {
+                            var line = new ParametricLine(new PointF((float)unit.Position.X - (float)unit.Size.X, (float)unit.Position.Y), new PointF((float)enemy.Position.X, (float)enemy.Position.Y));
+                            debug.Draw(new CustomData.Line(new Vec2Float((float)unit.Position.X, (float)unit.Position.Y), new Vec2Float((float)enemy.Position.X, (float)enemy.Position.Y), 0.1f, new ColorFloat(255, 0, 0, 1)));
+                            var fraction = Math.Abs((int)unit.Position.X) + Math.Abs((int)enemy.Position.X);
+                            var points = Enumerable.Range(0, fraction)
+                                .Select(p => line.Fraction((float)p / fraction));
+
+                            var unitSize = unit.Size;
+                            foreach (var pointF in points.Where(x => x.X > 0))
+                            {
+                                debug.Draw(new CustomData.Rect(new Vec2Float(pointF.X, pointF.Y), new Vec2Float((float)unit.Weapon.Value.Parameters.Bullet.Size, (float)unit.Weapon.Value.Parameters.Bullet.Size), new ColorFloat(123, 200, 1, 1)));
+                                if (game.Level.Tiles[(int)(pointF.X + unit.Size.X / 2)][(int)pointF.Y] == Tile.Wall)
+                                    return false;
+                            }
+                        }
+                        break;
+                    }
+                default:
+                    break;
             }
+
+            return true;
+
         }
-        else if (unit.Position.X < enemy.Position.X)
+        else
         {
-            var line = new ParametricLine(new PointF((float)unit.Position.X - (float)unit.Size.X, (float)unit.Position.Y), new PointF((float)enemy.Position.X, (float)enemy.Position.Y));
-            debug.Draw(new CustomData.Line(new Vec2Float((float)unit.Position.X, (float)unit.Position.Y), new Vec2Float((float)enemy.Position.X, (float)enemy.Position.Y), 0.1f, new ColorFloat(255, 0, 0, 1)));
-            var fraction = Math.Abs((int)unit.Position.X) + Math.Abs((int)enemy.Position.X);
-            var points = Enumerable.Range(0, fraction)
-                .Select(p => line.Fraction((float)p / fraction));
-            foreach (var pointF in points.Where(x => x.X < unit.Position.X + unit.Weapon.Value.Parameters.Explosion.Value.Radius * 2))
-            {
-                debug.Draw(new CustomData.Rect(new Vec2Float(pointF.X, pointF.Y), new Vec2Float((float)unit.Weapon.Value.Parameters.Bullet.Size, (float)unit.Weapon.Value.Parameters.Bullet.Size), new ColorFloat(123, 200, 1, 1)));
-                if (game.Level.Tiles[(int)pointF.X][(int)pointF.Y] == Tile.Wall
-                    || game.Level.Tiles[(int)pointF.X][(int)pointF.Y] == Tile.JumpPad)
-                    return false;
-            }
+            return false;
         }
-
-
-        //if (Math.Abs(unit.Position.X - enemy.Position.X) < unit.Weapon.Value.Parameters.Explosion.Value.Radius * 2
-        //    && Math.Abs(unit.Position.Y - enemy.Position.Y) < unit.Weapon.Value.Parameters.Explosion.Value.Radius * 2
-        //    && unit.Health > unit.Weapon.Value.Parameters.Explosion.Value.Damage + unit.Weapon.Value.Parameters.FireRate
-        //    && nearestHealth.HasValue
-        //    && (int)nearestHealth.Value.Position.X != (int)enemy.Position.X)
-        //    return true;
-
-        return true;
-
     }
 
     private Target GetTarget(CurrentInfo currentInfo)
@@ -283,7 +296,7 @@ public class MyStrategy
             var minDistanse = currentInfo.Bullets.Min(x => DistanceSqr(x.Position, currentInfo.Me.Position));
             nearestBullet = currentInfo.Bullets.FirstOrDefault(x => DistanceSqr(x.Position, currentInfo.Me.Position) == minDistanse);
         }
-            
+
         if (nearestBullet != null)
         {
             return NeoModeTarget(nearestBullet.Value, currentInfo);
@@ -291,7 +304,7 @@ public class MyStrategy
 
         if (!currentInfo.Me.Weapon.HasValue && currentInfo.NearestWeapon.HasValue)
         {
-            
+
             return new Target
             {
                 Position = currentInfo.NearestWeapon.Value.Position,
@@ -300,53 +313,17 @@ public class MyStrategy
             };
         }
 
-        if (currentInfo.Me.Health <= currentInfo.Game.Properties.UnitMaxHealth * 0.8 
+        if (currentInfo.Me.Health <= currentInfo.Game.Properties.UnitMaxHealth * 0.8
             && currentInfo.NearestHealth.HasValue)
         {
-            if (currentInfo.BestWeapon.HasValue
-            && currentInfo.Me.Weapon.Value.Typ != WeaponType.RocketLauncher
-            && DistanceSqr(currentInfo.BestWeapon.Value.Position, currentInfo.Me.Position) < 5
-            && currentInfo.Me.Health > currentInfo.Game.Properties.UnitMaxHealth * 0.5
-            && DistanceSqr(currentInfo.BestWeapon.Value.Position, currentInfo.Me.Position) < DistanceSqr(currentInfo.BestWeapon.Value.Position, currentInfo.NearestHealth.Value.Position))
-            {
-                return new Target
-                {
-                    Position = currentInfo.BestWeapon.Value.Position,
-                    Purpose = Purpose.BestWeapon,
-                    SwapWeapon = true
-                };
-            }
-            else 
-                return new Target
+            return new Target
             {
                 Position = currentInfo.NearestHealth.Value.Position,
                 Purpose = Purpose.Heal
             };
-        
         }
 
-        //if (!currentInfo.NearestHealth.HasValue
-        //    && currentInfo.Me.Health < currentInfo.Enemy.Value.Health
-        //    && currentInfo.Enemy.Value.Health > currentInfo.Game.Properties.UnitMaxHealth * 0.8
-        //    && currentInfo.Me.Health < currentInfo.Game.Properties.UnitMaxHealth * 0.5
-        //    && currentInfo.Me.Weapon.HasValue
-        //    && currentInfo.Me.Weapon.Value.Typ == WeaponType.RocketLauncher
-        //    && (currentInfo.Me.Position.X + currentInfo.Me.Weapon.Value.Parameters.Explosion.Value.Radius * 2 > currentInfo.Enemy.Value.Position.X
-        //        || currentInfo.Me.Position.X - currentInfo.Me.Weapon.Value.Parameters.Explosion.Value.Radius * 2 < currentInfo.Enemy.Value.Position.X)
-        //    && currentInfo.NearestNotBazuka.HasValue
-        //    )
-        //{
-        //    return new Target
-        //    {
-        //        Position = currentInfo.NearestNotBazuka.Value.Position,
-        //        Purpose = Purpose.NearestNotBazuka,
-        //        SwapWeapon = true
-        //    };
-        //}
-
-        if (currentInfo.BestWeapon.HasValue
-            && currentInfo.Me.Weapon.HasValue
-            && currentInfo.Me.Weapon.Value.Typ != WeaponType.RocketLauncher)
+        if (currentInfo.BestWeapon.HasValue)
         {
             return new Target
             {
@@ -355,22 +332,71 @@ public class MyStrategy
                 SwapWeapon = true
             };
         }
+
         if (currentInfo.Enemy.HasValue)
         {
-            return new Target
-            {
-                //+радиус взрыва пули
-                Position = currentInfo.Enemy.Value.Position,
-                Purpose = Purpose.Enemy
-            };
-        }
+            var currSituation = currentInfo.Game.Properties.MaxTickCount / CurrentTick;
+            var minDistance = 0;
 
+            if (currSituation > 2)
+                minDistance = 10;
+            else if (currSituation < 1.11)
+                minDistance = 3;
+            else if (currSituation < 1.25)
+                minDistance = 4;
+            else if (currSituation < 1.33)
+                minDistance = 6;
+            else if (currSituation < 2)
+                minDistance = 8;
+
+
+
+            if (currentInfo.Me.Position.X > currentInfo.Enemy.Value.Position.X)
+            {
+                if (currentInfo.Me.Position.X - currentInfo.Enemy.Value.Position.X < 2 && currentInfo.Me.Position.Y > currentInfo.Enemy.Value.Position.Y)
+                {
+                    return new Target
+                    {
+                        Position = new Vec2Double(currentInfo.Enemy.Value.Position.X + minDistance, currentInfo.Enemy.Value.Position.Y + minDistance),
+                        Purpose = Purpose.Enemy
+                    };
+                }
+                else
+                {
+                    return new Target
+                    {
+                        Position = new Vec2Double(currentInfo.Enemy.Value.Position.X + minDistance, currentInfo.Enemy.Value.Position.Y),
+                        Purpose = Purpose.Enemy
+                    };
+                }
+            }
+            else
+            {
+                if (currentInfo.Enemy.Value.Position.X - currentInfo.Me.Position.X < 2 && currentInfo.Me.Position.Y > currentInfo.Enemy.Value.Position.Y)
+                {
+                    return new Target
+                    {
+                        Position = new Vec2Double(currentInfo.Enemy.Value.Position.X - minDistance, currentInfo.Enemy.Value.Position.Y + minDistance),
+                        Purpose = Purpose.Enemy
+                    };
+                }
+                else
+                {
+                    return new Target
+                    {
+                        Position = new Vec2Double(currentInfo.Enemy.Value.Position.X - minDistance, currentInfo.Enemy.Value.Position.Y),
+                        Purpose = Purpose.Enemy
+                    };
+                }
+            }
+        }
         return new Target
         {
             Position = currentInfo.HomePosition,
             Purpose = Purpose.Home
         };
     }
+
 
     private Target NeoModeTarget(Bullet bullet, CurrentInfo currentInfo)
     {
@@ -382,7 +408,7 @@ public class MyStrategy
             {
                 return new Target
                 {
-                    Position = new Vec2Double(currentInfo.Me.Position.X + 5, currentInfo.Me.Position.Y + 10),
+                    Position = new Vec2Double(currentInfo.Me.Position.X - 5, currentInfo.Me.Position.Y + 10),
                     Purpose = Purpose.NeoMode,
                     NeedJump = true
                 };
@@ -419,7 +445,7 @@ public class MyStrategy
             {
                 return new Target
                 {
-                    Position = new Vec2Double(currentInfo.Me.Position.X - 5, currentInfo.Me.Position.Y + 10),
+                    Position = new Vec2Double(currentInfo.Me.Position.X + 5, currentInfo.Me.Position.Y + 10),
                     Purpose = Purpose.NeoMode,
                     NeedJump = true
                 };
