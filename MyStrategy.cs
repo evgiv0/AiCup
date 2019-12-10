@@ -210,7 +210,7 @@ public class MyStrategy
                     {
                         if (unit.Position.X > enemy.Position.X)
                         {
-                            var line = new ParametricLine(new PointF((float)unit.Position.X + (float)unit.Size.X, (float)unit.Position.Y), new PointF((float)enemy.Position.X, (float)enemy.Position.Y));
+                            var line = new ParametricLine(new PointF((float)unit.Position.X - (float)(unit.Size.X / 2), (float)unit.Position.Y), new PointF((float)(enemy.Position.X + enemy.Size.X / 2), (float)(enemy.Position.Y + enemy.Size.Y)));
                             debug.Draw(new CustomData.Line(new Vec2Float((float)unit.Position.X, (float)unit.Position.Y), new Vec2Float((float)enemy.Position.X, (float)enemy.Position.Y), 0.1f, new ColorFloat(255, 0, 0, 1)));
                             var fraction = Math.Abs((int)unit.Position.X) + Math.Abs((int)enemy.Position.X);
                             var points = Enumerable.Range(0, fraction)
@@ -225,7 +225,7 @@ public class MyStrategy
                         }
                         else if (unit.Position.X < enemy.Position.X)
                         {
-                            var line = new ParametricLine(new PointF((float)unit.Position.X - (float)unit.Size.X, (float)unit.Position.Y), new PointF((float)enemy.Position.X, (float)enemy.Position.Y));
+                            var line = new ParametricLine(new PointF((float)unit.Position.X + (float)(unit.Size.X / 2), (float)unit.Position.Y), new PointF((float)(enemy.Position.X - enemy.Size.X / 2), (float)(enemy.Position.Y + enemy.Size.Y)));
                             debug.Draw(new CustomData.Line(new Vec2Float((float)unit.Position.X, (float)unit.Position.Y), new Vec2Float((float)enemy.Position.X, (float)enemy.Position.Y), 0.1f, new ColorFloat(255, 0, 0, 1)));
                             var fraction = Math.Abs((int)unit.Position.X) + Math.Abs((int)enemy.Position.X);
                             var points = Enumerable.Range(0, fraction)
@@ -245,7 +245,7 @@ public class MyStrategy
                     {
                         if (unit.Position.X > enemy.Position.X)
                         {
-                            var line = new ParametricLine(new PointF((float)unit.Position.X + (float)unit.Size.X, (float)unit.Position.Y), new PointF((float)enemy.Position.X, (float)enemy.Position.Y));
+                            var line = new ParametricLine(new PointF((float)unit.Position.X - (float)(unit.Size.X / 2), (float)unit.Position.Y), new PointF((float)(enemy.Position.X + enemy.Size.X / 2), (float)(enemy.Position.Y + enemy.Size.Y)));
                             debug.Draw(new CustomData.Line(new Vec2Float((float)unit.Position.X, (float)unit.Position.Y), new Vec2Float((float)enemy.Position.X, (float)enemy.Position.Y), 0.1f, new ColorFloat(255, 0, 0, 1)));
                             var fraction = Math.Abs((int)unit.Position.X) + Math.Abs((int)enemy.Position.X);
                             var points = Enumerable.Range(0, fraction)
@@ -259,7 +259,7 @@ public class MyStrategy
                         }
                         else if (unit.Position.X < enemy.Position.X)
                         {
-                            var line = new ParametricLine(new PointF((float)unit.Position.X - (float)unit.Size.X, (float)unit.Position.Y), new PointF((float)enemy.Position.X, (float)enemy.Position.Y));
+                            var line = new ParametricLine(new PointF((float)unit.Position.X + (float)(unit.Size.X / 2), (float)unit.Position.Y), new PointF((float)(enemy.Position.X - enemy.Size.X / 2), (float)(enemy.Position.Y + enemy.Size.Y)));
                             debug.Draw(new CustomData.Line(new Vec2Float((float)unit.Position.X, (float)unit.Position.Y), new Vec2Float((float)enemy.Position.X, (float)enemy.Position.Y), 0.1f, new ColorFloat(255, 0, 0, 1)));
                             var fraction = Math.Abs((int)unit.Position.X) + Math.Abs((int)enemy.Position.X);
                             var points = Enumerable.Range(0, fraction)
@@ -335,19 +335,22 @@ public class MyStrategy
 
         if (currentInfo.Enemy.HasValue)
         {
-            var currSituation = currentInfo.Game.Properties.MaxTickCount / CurrentTick;
-            var minDistance = 0;
+            double currSituation = (double)currentInfo.Game.Properties.MaxTickCount / (double)CurrentTick;
+            var minDistance = 7;
 
             if (currSituation > 2)
-                minDistance = 10;
-            else if (currSituation < 1.11)
-                minDistance = 3;
-            else if (currSituation < 1.25)
-                minDistance = 4;
-            else if (currSituation < 1.33)
-                minDistance = 6;
-            else if (currSituation < 2)
-                minDistance = 8;
+                minDistance = 7;
+            else if (currentInfo.Game.Players.First(x => x.Id == currentInfo.Me.PlayerId).Score <= currentInfo.Game.Players.First(x => x.Id == currentInfo.Enemy.Value.PlayerId).Score)
+            {
+                if (currSituation < 1.11)
+                    minDistance = 0;
+                else if (currSituation < 1.25)
+                    minDistance = 2;
+                else if (currSituation < 1.33)
+                    minDistance = 4;
+                else if (currSituation < 2)
+                    minDistance = 6;
+            }
 
 
 
