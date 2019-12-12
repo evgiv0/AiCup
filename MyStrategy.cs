@@ -98,12 +98,13 @@ public class MyStrategy
             NearestWeapon = nearestWeapon,
             NearestNotBazuka = nearestNotBazuka,
             HomePosition = homePosition,
-            Bullets = game.Bullets.Where(b => b.PlayerId != unit.PlayerId
-            && Math.Abs(unit.Position.X - b.Position.X) < 5
-            && Math.Abs(unit.Position.Y - b.Position.Y) < 5).ToList(),
+            Bullets = game.Bullets.Where(b => b.PlayerId != unit.PlayerId)
+            //&& Math.Abs(unit.Position.X - b.Position.X) < 5
+            //&& Math.Abs(unit.Position.Y - b.Position.Y) < 5)
+            .ToList(),
             BestWeapon = bestWeapon,
             Game = game
-        });
+        }, debug);
 
         var targetPos = target.Position;
 
@@ -119,12 +120,14 @@ public class MyStrategy
         }
 
         if (target.Purpose == Purpose.NeoMode)
-            InJump = target.NeedJump;
+            InJump = InJump.HasValue && InJump.Value;
         else
             InJump = null;
 
-        bool jump = targetPos.Y > unit.Position.Y;
-        if (targetPos.X > unit.Position.X && game.Level.Tiles[(int)(unit.Position.X + 1)][(int)(unit.Position.Y)] == Tile.Wall)
+        bool jump = false;
+            //targetPos.Y > unit.Position.Y;
+        if (targetPos.X > unit.Position.X && game.Level.Tiles[(int)(unit.Position.X + 1)][(int)(unit.Position.Y)] == Tile.Wall
+            && (int)(unit.Position.X + 1) != game.Level.Tiles.Length)
         {
             jump = true;
         }
@@ -188,15 +191,7 @@ public class MyStrategy
             && (int)unitPosition.X == (int)targetPosition.X
             && (int)unitPosition.Y > (int)nearestEnemy.Value.Position.Y)
             return false;
-
-        //if(unitPosition.X > nearestEnemy.Value.Position.X
-        //    && targetPosition.X < unitPosition.X
-        //    && targetPosition.X < nearestEnemy.Value.Position.X 
-        //    && 
-        //    ) 
-        //if(targetPosition.)
-
-
+       
         return true;
     }
 
@@ -288,7 +283,7 @@ public class MyStrategy
         }
     }
 
-    private Target GetTarget(CurrentInfo currentInfo)
+    private Target GetTarget(CurrentInfo currentInfo, Debug debug)
     {
         Bullet? nearestBullet = null;
         if (currentInfo.Bullets.Any())
@@ -299,7 +294,7 @@ public class MyStrategy
 
         if (nearestBullet != null)
         {
-            return NeoModeTarget(nearestBullet.Value, currentInfo);
+            return NeoModeTarget(nearestBullet.Value, currentInfo, debug);
         }
 
         if (!currentInfo.Me.Weapon.HasValue && currentInfo.NearestWeapon.HasValue)
@@ -401,80 +396,135 @@ public class MyStrategy
     }
 
 
-    private Target NeoModeTarget(Bullet bullet, CurrentInfo currentInfo)
+    private Target NeoModeTarget(Bullet bullet, CurrentInfo currentInfo, Debug debug)
     {
         if (currentInfo.Me.Position.X > bullet.Position.X)
         {
-            if (bullet.Position.Y + bullet.Size > currentInfo.Me.Position.Y - 1
-                && bullet.Position.Y < currentInfo.Me.Position.Y + currentInfo.Me.Size.Y
-                && bullet.Position.X != currentInfo.Me.Position.X)
+            var speedX = bullet.Velocity.X / currentInfo.Game.Properties.TicksPerSecond;
+            var speedY = bullet.Velocity.Y / currentInfo.Game.Properties.TicksPerSecond;
+            
+            var distanceX = Math.Abs(currentInfo.Me.Position.X - bullet.Position.X);
+            var time = Math.Abs((int)(distanceX / speedX));
+
+            var posY = bullet.Position.Y + speedY * time;
+            var posX = bullet.Position.X + speedX * time;
+
+            var insuredX = posY > currentInfo.Me.Position.Y
+                && posY + bullet.Size < currentInfo.Me.Position.Y + currentInfo.Me.Size.Y;
+
+            //var insuredY = posX + bullet.Size / 2 > currentInfo.Me.Position.X - currentInfo.Me.Size.X / 2
+            //    && posX + bullet.Size / 2 < currentInfo.Me.Position.X + currentInfo.Me.Size.X / 2
+            //    ;
+
+
+            var jumpTick = currentInfo.Game.Properties.UnitJumpTime * currentInfo.Game.Properties.TicksPerSecond;
+            var jumpSpeedPerTick = currentInfo.Game.Properties.UnitJumpSpeed / currentInfo.Game.Properties.TicksPerSecond;
+            
+            if (insuredX)
             {
-                return new Target
+                debug.Draw(new CustomData.Rect(
+                new Vec2Float((float)posX, (float)posY),
+                new Vec2Float((float)currentInfo.Enemy.Value.Weapon.Value.Parameters.Bullet.Size,
+                (float)currentInfo.Enemy.Value.Weapon.Value.Parameters.Bullet.Size), new ColorFloat(51, 255, 51, 1)));
+
+                var isPossibleToJumpX = currentInfo.Me.Position.Y + jumpSpeedPerTick * time > posY
+                    && bullet.Position.X + speedX * jumpTick > currentInfo.Me.Position.X;
+                if (isPossibleToJumpX)
                 {
-                    Position = new Vec2Double(currentInfo.Me.Position.X - 5, currentInfo.Me.Position.Y + 10),
-                    Purpose = Purpose.NeoMode,
-                    NeedJump = true
-                };
+                    InJump = true;
+
+                    return new Target
+                    {
+                        Position = new Vec2Double(currentInfo.Me.Position.X, currentInfo.Me.Position.Y),
+                        Purpose = Purpose.NeoMode,
+                        NeedJump = true
+                    };
+                }
+                else
+                {
+
+                }
             }
 
-            if ((int)bullet.Position.Y < (int)currentInfo.Me.Position.Y
-                            && bullet.Position.X != currentInfo.Me.Position.X)
-            {
-                return new Target
-                {
-                    Position = new Vec2Double(currentInfo.Me.Position.X + 5, currentInfo.Me.Position.Y),
-                    Purpose = Purpose.NeoMode,
-                    NeedJump = false
-                };
-            }
+            if (bullet.Position.X > currentInfo.Me.Position.X)
+                InJump = null;
 
-            if ((int)bullet.Position.Y > (int)currentInfo.Me.Position.Y
-                            && bullet.Position.X != currentInfo.Me.Position.X)
+            return new Target
             {
-                return new Target
-                {
-                    Position = new Vec2Double(currentInfo.Me.Position.X + 5, currentInfo.Me.Position.Y),
-                    Purpose = Purpose.NeoMode,
-                    NeedJump = false
-                };
-            }
+                Position = new Vec2Double(currentInfo.Me.Position.X, currentInfo.Me.Position.Y),
+                Purpose = Purpose.NeoMode,
+                NeedJump = false
+            };
 
+
+            debug.Draw(new CustomData.Rect(
+                new Vec2Float((float)posX, (float)posY),
+                new Vec2Float((float)currentInfo.Enemy.Value.Weapon.Value.Parameters.Bullet.Size,
+                (float)currentInfo.Enemy.Value.Weapon.Value.Parameters.Bullet.Size), new ColorFloat(51, 255, 51, 1)));
         }
-        else
+        else if(currentInfo.Me.Position.X <= bullet.Position.X)
         {
-            if (bullet.Position.Y + bullet.Size > currentInfo.Me.Position.Y - 1
-                && bullet.Position.Y < currentInfo.Me.Position.Y + currentInfo.Me.Size.Y
-                && bullet.Position.X != currentInfo.Me.Position.X)
+            var speedX = bullet.Velocity.X / currentInfo.Game.Properties.TicksPerSecond;
+            var speedY = bullet.Velocity.Y / currentInfo.Game.Properties.TicksPerSecond;
+
+            var distanceX = Math.Abs(currentInfo.Me.Position.X - bullet.Position.X);
+            var time = Math.Abs((int)(distanceX / speedX));
+
+            var posY = bullet.Position.Y + speedY * time;
+            var posX = bullet.Position.X + speedX * time;
+
+            var insuredX = posY > currentInfo.Me.Position.Y
+                && posY + bullet.Size < currentInfo.Me.Position.Y + currentInfo.Me.Size.Y;
+
+            //var insuredY = posX + bullet.Size / 2 > currentInfo.Me.Position.X - currentInfo.Me.Size.X / 2
+            //    && posX + bullet.Size / 2 < currentInfo.Me.Position.X + currentInfo.Me.Size.X / 2
+            //    ;
+
+
+            var jumpTick = currentInfo.Game.Properties.UnitJumpTime * currentInfo.Game.Properties.TicksPerSecond;
+            var jumpSpeedPerTick = currentInfo.Game.Properties.UnitJumpSpeed / currentInfo.Game.Properties.TicksPerSecond;
+
+            if (insuredX)
             {
-                return new Target
+                debug.Draw(new CustomData.Rect(
+                new Vec2Float((float)posX, (float)posY),
+                new Vec2Float((float)currentInfo.Enemy.Value.Weapon.Value.Parameters.Bullet.Size,
+                (float)currentInfo.Enemy.Value.Weapon.Value.Parameters.Bullet.Size), new ColorFloat(51, 255, 51, 1)));
+
+                var isPossibleToJumpX = currentInfo.Me.Position.Y + jumpSpeedPerTick * time > posY
+                    && bullet.Position.X + speedX * jumpTick < currentInfo.Me.Position.X;
+                if (isPossibleToJumpX)
                 {
-                    Position = new Vec2Double(currentInfo.Me.Position.X + 5, currentInfo.Me.Position.Y + 10),
-                    Purpose = Purpose.NeoMode,
-                    NeedJump = true
-                };
+                    InJump = true;
+
+                    return new Target
+                    {
+                        Position = new Vec2Double(currentInfo.Me.Position.X, currentInfo.Me.Position.Y),
+                        Purpose = Purpose.NeoMode,
+                        NeedJump = true
+                    };
+                }
+                else
+                {
+
+                }
             }
 
-            if ((int)bullet.Position.Y < (int)currentInfo.Me.Position.Y
-                            && bullet.Position.X != currentInfo.Me.Position.X)
-            {
-                return new Target
-                {
-                    Position = new Vec2Double(currentInfo.Me.Position.X - 5, currentInfo.Me.Position.Y),
-                    Purpose = Purpose.NeoMode,
-                    NeedJump = false
-                };
-            }
+            if (bullet.Position.X < currentInfo.Me.Position.X)
+                InJump = null;
 
-            if ((int)bullet.Position.Y > (int)currentInfo.Me.Position.Y
-                            && bullet.Position.X != currentInfo.Me.Position.X)
+            return new Target
             {
-                return new Target
-                {
-                    Position = new Vec2Double(currentInfo.Me.Position.X - 5, currentInfo.Me.Position.Y),
-                    Purpose = Purpose.NeoMode,
-                    NeedJump = false
-                };
-            }
+                Position = new Vec2Double(currentInfo.Me.Position.X, currentInfo.Me.Position.Y),
+                Purpose = Purpose.NeoMode,
+                NeedJump = false
+            };
+
+
+            debug.Draw(new CustomData.Rect(
+                new Vec2Float((float)posX, (float)posY),
+                new Vec2Float((float)currentInfo.Enemy.Value.Weapon.Value.Parameters.Bullet.Size,
+                (float)currentInfo.Enemy.Value.Weapon.Value.Parameters.Bullet.Size), new ColorFloat(51, 255, 51, 1)));
         }
 
         return new Target
