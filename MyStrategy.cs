@@ -52,7 +52,9 @@ public class MyStrategy
                             var anotherWeapon = item;
                             var myWeapon = unit.Weapon;
 
-                            if (myWeapon.HasValue && myWeapon.Value.Typ != 0 && anotherWeapon.WeaponType == 0)
+                            if (myWeapon.HasValue 
+                                && myWeapon.Value.Typ != 0 && anotherWeapon.WeaponType == 0
+                                &&(!bestWeapon.HasValue || DistanceSqr(unit.Position, lootBox.Position) < DistanceSqr(unit.Position, bestWeapon.Value.Position)))
                             {
                                 bestWeapon = lootBox;
                             }
@@ -99,8 +101,6 @@ public class MyStrategy
             NearestNotBazuka = nearestNotBazuka,
             HomePosition = homePosition,
             Bullets = game.Bullets.Where(b => b.PlayerId != unit.PlayerId)
-            //&& Math.Abs(unit.Position.X - b.Position.X) < 5
-            //&& Math.Abs(unit.Position.Y - b.Position.Y) < 5)
             .ToList(),
             BestWeapon = bestWeapon,
             Game = game
@@ -114,7 +114,6 @@ public class MyStrategy
         Vec2Double aim = new Vec2Double(0, 0);
         if (nearestEnemy.HasValue)
         {
-            //if(!nearestEnemy.Value.OnGround && nearestEnemy.Value.)
             aim = new Vec2Double(nearestEnemy.Value.Position.X - unit.Position.X, nearestEnemy.Value.Position.Y - unit.Position.Y);
 
         }
@@ -124,14 +123,14 @@ public class MyStrategy
         else
             InJump = null;
 
-        bool jump = false;
-            //targetPos.Y > unit.Position.Y;
+        bool jump = targetPos.Y > unit.Position.Y;
         if (targetPos.X > unit.Position.X && game.Level.Tiles[(int)(unit.Position.X + 1)][(int)(unit.Position.Y)] == Tile.Wall
             && (int)(unit.Position.X + 1) != game.Level.Tiles.Length)
         {
             jump = true;
         }
-        else if (targetPos.X < unit.Position.X && game.Level.Tiles[(int)(unit.Position.X - 1)][(int)(unit.Position.Y)] == Tile.Wall)
+        else if (targetPos.X < unit.Position.X && game.Level.Tiles[(int)(unit.Position.X - 1)][(int)(unit.Position.Y)] == Tile.Wall
+            && (int)(unit.Position.X - 1) != 0)
         {
             jump = true;
         }
@@ -146,8 +145,6 @@ public class MyStrategy
         {
             jump = true;
         }
-        //else if (target.Purpose == Purpose.Heal)
-        //    jump = true;
 
         if (InJump.HasValue)
             jump = InJump.Value;
