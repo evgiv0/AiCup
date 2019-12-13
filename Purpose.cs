@@ -6,5 +6,6 @@
     BestWeapon = 3,
     NearestWeapon = 4,
     NearestNotBazuka = 5,
-    NeoMode = 6
+    NeoMode = 6,
+    GoodPosition = 7
 }

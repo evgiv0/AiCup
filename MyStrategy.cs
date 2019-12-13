@@ -90,6 +90,16 @@ public class MyStrategy
                 }
         }
 
+        Vec2Double aim = new Vec2Double(0, 0);
+        if (nearestEnemy.HasValue)
+        {
+            aim = new Vec2Double(nearestEnemy.Value.Position.X - unit.Position.X, nearestEnemy.Value.Position.Y - unit.Position.Y);
+
+        }
+
+        bool shoot = true;
+        shoot = CanIShoot(unit, aim, game, debug, nearestEnemy.Value, nearestHealth);
+
 
         var target = GetTarget(new CurrentInfo
         {
@@ -104,20 +114,13 @@ public class MyStrategy
             .ToList(),
             BestWeapon = bestWeapon,
             Game = game
-        }, debug);
+        }, debug, shoot);
 
         var targetPos = target.Position;
 
 
         debug.Draw(new CustomData.Log("Target pos: " + target.Position));
-
-        Vec2Double aim = new Vec2Double(0, 0);
-        if (nearestEnemy.HasValue)
-        {
-            aim = new Vec2Double(nearestEnemy.Value.Position.X - unit.Position.X, nearestEnemy.Value.Position.Y - unit.Position.Y);
-
-        }
-
+        
         if (target.Purpose == Purpose.NeoMode)
             InJump = InJump.HasValue && InJump.Value;
         else
@@ -148,15 +151,15 @@ public class MyStrategy
 
         if (InJump.HasValue)
             jump = InJump.Value;
-        bool shoot = true;
 
-        shoot = CanIShoot(unit, aim, game, debug, nearestEnemy.Value, nearestHealth);
 
         double velocity = targetPos.X - unit.Position.X;
         if (unit.Position.X > targetPos.X)
             velocity = (int)-game.Properties.UnitMaxHorizontalSpeed;
+        else if (unit.Position.X < targetPos.X)
+            velocity = (int) game.Properties.UnitMaxHorizontalSpeed;
         else
-            velocity = (int)game.Properties.UnitMaxHorizontalSpeed;
+            velocity = targetPos.X - unit.Position.X;
 
 
         UnitAction action = new UnitAction
@@ -280,7 +283,7 @@ public class MyStrategy
         }
     }
 
-    private Target GetTarget(CurrentInfo currentInfo, Debug debug)
+    private Target GetTarget(CurrentInfo currentInfo, Debug debug, bool canIShoot)
     {
         Bullet? nearestBullet = null;
         if (currentInfo.Bullets.Any())
@@ -292,6 +295,16 @@ public class MyStrategy
         if (nearestBullet != null)
         {
             return NeoModeTarget(nearestBullet.Value, currentInfo, debug);
+        }
+
+        if (currentInfo.Me.Health <= currentInfo.Game.Properties.UnitMaxHealth * 0.5
+            && currentInfo.NearestHealth.HasValue)
+        {
+            return new Target
+            {
+                Position = currentInfo.NearestHealth.Value.Position,
+                Purpose = Purpose.Heal
+            };
         }
 
         if (!currentInfo.Me.Weapon.HasValue && currentInfo.NearestWeapon.HasValue)
@@ -348,6 +361,20 @@ public class MyStrategy
 
             if (currentInfo.Me.Position.X > currentInfo.Enemy.Value.Position.X)
             {
+                if (currSituation > 2 && currentInfo.Game.Level.Tiles[(int)(currentInfo.Me.Position.X - 1)][(int)(currentInfo.Me.Position.Y - 1)] == Tile.Empty
+                                      && currentInfo.Game.Level.Tiles[(int)(currentInfo.Me.Position.X)][(int)(currentInfo.Me.Position.Y - 1)] == Tile.Wall
+                                      && (int)(currentInfo.Me.Position.X + 1) != currentInfo.Game.Level.Tiles.Length
+                                      && canIShoot )
+                    //&& mindistace
+                    //&& canishot
+                {
+                    return new Target
+                    {
+                        Position = currentInfo.HomePosition,
+                        Purpose = Purpose.GoodPosition
+                    };
+                }
+
                 if (currentInfo.Me.Position.X - currentInfo.Enemy.Value.Position.X < 2 && currentInfo.Me.Position.Y > currentInfo.Enemy.Value.Position.Y)
                 {
                     return new Target
